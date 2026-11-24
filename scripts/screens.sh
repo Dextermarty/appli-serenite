@@ -12,7 +12,7 @@ adb logcat -c
 
 snap() { adb exec-out screencap -p > "$OUT/$1.png"; }
 open() { # open <nom> <extra shot>
-  adb shell am start -S -W -n $ACT --es shot "$2" > /dev/null; sleep 4; snap "$1"
+  adb shell am start -S -W -n $ACT --es shot "\"$2\"" > /dev/null; sleep 4; snap "$1"
 }
 scroll() { adb shell input swipe 540 1900 540 700 400; sleep 1.5; snap "$1"; }
 tap() { # tap <texte exact visible>
@@ -67,11 +67,18 @@ open 34_resp "route:breath|coherence"
 tap "Commencer"; sleep 3; snap 35_resp_inspire; sleep 5; snap 36_resp_expire
 
 open 37_checkin "route:mood"
-tap "Bien"; tap "Calme"; tap "Sport"; scroll 38_checkin_rempli
+tap "Bien"; tap "2"; snap 37b_checkin_bien; tap "Calme"; scroll 38_checkin_rempli; tap "Sport"; scroll 38b; scroll 38c
 tap "Enregistrer"; sleep 2; snap 39_apres_checkin
+open 39b_humeur "tab:1"
 
 open 40_recherche "route:search"
-adb shell input text "sommeil"; sleep 2; snap 41_recherche_sommeil
+tap "sommeil, burn-out, respiration…"; adb shell input text "sommeil"; sleep 2; adb shell input keyevent 111; sleep 1; snap 41_recherche_sommeil
+
+open 44_theme "route:theme|burnout"; tap "Ajouter"; sleep 1; snap 45_theme_habitude
+open 46_jour "route:programDay|burnout:3"; scroll 46b_jour
+open 47_phq "route:test|phq9"; tap "Commencer"
+for i in $(seq 1 9); do tap "Plusieurs jours"; done
+sleep 1; snap 48_phq_resultat; scroll 48b_phq_resultat
 
 open 42_guide "route:pause3"; tap "Commencer"; sleep 4; snap 43_guide_en_cours
 

@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 fun buzz(ctx: Context, ms: Long = 40) {
@@ -96,8 +97,8 @@ fun BreathingScreen(state: AppState, store: Store, patternId: String, onBack: ()
                 phaseEnd = System.currentTimeMillis() + p.seconds * 1000L
                 if (state.settings.vibrate) buzz(ctx)
                 if (Store.get(ctx).state.value.settings.voice) voice.say(p.label)
-                if (p.target != scale.value) scale.animateTo(p.target, tween(p.seconds * 1000, easing = LinearEasing))
-                else delay(p.seconds * 1000L)
+                if (p.target != scale.value) launch { scale.animateTo(p.target, tween(p.seconds * 1000, easing = LinearEasing)) }
+                delay(p.seconds * 1000L)
             }
         }
         logSession(store, "breath:" + b.id, ((System.currentTimeMillis() - startedAt) / 1000).toInt())
@@ -198,9 +199,9 @@ fun GuidedScreen(title: String, tool: String, steps: List<GuidedStep>, state: Ap
             InfoCard { Text("Exercice terminé. Observe ton état avant de reprendre tes activités.") }
             Button(onClick = { idx = 0; left = steps.first().seconds; spent = 0; done = false }, modifier = Modifier.fillMaxWidth()) { Text("Recommencer") }
         } else {
+            Button(onClick = { running = !running }, modifier = Modifier.fillMaxWidth()) { Text(if (running) "Pause" else if (spent == 0) "Commencer" else "Reprendre") }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(enabled = idx > 0, onClick = { idx--; left = steps[idx].seconds }, modifier = Modifier.weight(1f)) { Text("Précédent") }
-                Button(onClick = { running = !running }, modifier = Modifier.weight(1f)) { Text(if (running) "Pause" else if (spent == 0) "Commencer" else "Reprendre") }
                 OutlinedButton(enabled = idx < steps.lastIndex, onClick = { idx++; left = steps[idx].seconds }, modifier = Modifier.weight(1f)) { Text("Suivant") }
             }
         }
