@@ -20,6 +20,7 @@ class Store private constructor(ctx: Context) {
         if (s.settings != old.settings || s.moods.size != old.moods.size || s.programs != old.programs) {
             runCatching { Reminders.schedule(appCtx) }
         }
+        if (s.moods != old.moods || s.sessions != old.sessions || s.journal != old.journal) runCatching { Widget.refresh(appCtx) }
     }
 
     /** Remplace tout l'état (import d'une sauvegarde). */

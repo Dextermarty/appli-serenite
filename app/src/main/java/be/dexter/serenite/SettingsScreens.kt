@@ -90,6 +90,19 @@ fun SettingsScreen(state: AppState, store: Store, nav: Nav, onBack: () -> Unit) 
         }
         Muted("Le rappel d'humeur ne s'affiche pas si le check-in du jour est déjà fait.")
 
+        SectionTitle("Confidentialité")
+        val act = ctx as? MainActivity
+        SwitchRow(
+            "Verrouiller l'appli",
+            if (Lock.available(ctx)) "Empreinte, visage ou code du téléphone à l'ouverture" else "Configure d'abord un verrouillage d'écran sur le téléphone",
+            st.lock,
+        ) { v ->
+            if (!v) set { it.copy(lock = false) }
+            else if (act != null && Lock.available(ctx)) Lock.prompt(act, "Confirme pour activer le verrou",
+                onOk = { set { it.copy(lock = true) } },
+                onFail = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() })
+        }
+
         SectionTitle("Exercices et parcours")
         SwitchRow("Vibrations", "Pendant la respiration et les exercices guidés", st.vibrate) { v -> set { it.copy(vibrate = v) } }
         SwitchRow("Un jour de parcours par jour", "Sinon, le jour suivant se débloque immédiatement", st.oneDayPerDay) { v -> set { it.copy(oneDayPerDay = v) } }

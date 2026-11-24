@@ -29,6 +29,7 @@ object StateJson {
             programTime = st.optInt("programTime", def.programTime),
             oneDayPerDay = st.optBoolean("oneDayPerDay", def.oneDayPerDay),
             vibrate = st.optBoolean("vibrate", def.vibrate),
+            lock = st.optBoolean("lock", def.lock),
         )
         val programs = o.optJSONArray("programs").objs { p ->
             val a = p.optJSONArray("done")
@@ -76,7 +77,7 @@ object StateJson {
             .put("remindMood", st.remindMood).put("moodTime", st.moodTime)
             .put("remindEvening", st.remindEvening).put("eveningTime", st.eveningTime)
             .put("remindProgram", st.remindProgram).put("programTime", st.programTime)
-            .put("oneDayPerDay", st.oneDayPerDay).put("vibrate", st.vibrate))
+            .put("oneDayPerDay", st.oneDayPerDay).put("vibrate", st.vibrate).put("lock", st.lock))
         o.put("moods", JSONArray().apply {
             s.moods.forEach {
                 put(JSONObject().put("id", it.id).put("at", it.at).put("mood", it.mood)

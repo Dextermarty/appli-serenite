@@ -80,7 +80,7 @@ class LogicTest {
     @Test fun jsonRoundTrip() {
         val s = AppState(
             onboarded = true,
-            settings = Settings(name = "Dexter", remindEvening = true, moodTime = 19 * 60, oneDayPerDay = false),
+            settings = Settings(name = "Dexter", remindEvening = true, moodTime = 19 * 60, oneDayPerDay = false, lock = true),
             moods = listOf(MoodEntry("m", 1000L, 4, listOf("Calme"), listOf("Sport"), "note \"guillemets\"\nligne")),
             journal = listOf(JournalEntry("j", 2000L, "question", "Q ?", "Réponse é à")),
             thoughts = listOf(ThoughtRecord("t", 3000L, "sit", "pensée", "Stress", 80, listOf("catastrophe"), "p", "c", "alt", 40)),

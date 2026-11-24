@@ -62,6 +62,43 @@ class Nav {
 
 class MainActivity : ComponentActivity() {
     private val openRequest = mutableStateOf<String?>(null)
+    private val locked = mutableStateOf(false)
+    private val lockMessage = mutableStateOf<String?>(null)
+    private var stoppedAt = 0L
+    private var prompting = false
+    private var autoPrompted = false
+
+    private fun lockOn() = Store.get(this).state.value.settings.lock && Lock.available(this)
+
+    /** Demande l'empreinte / le code. auto = lancé à l'ouverture (une seule fois par verrouillage). */
+    fun unlock(auto: Boolean = false) {
+        if (!locked.value || prompting || (auto && autoPrompted)) return
+        if (!lockOn()) { locked.value = false; return }
+        prompting = true
+        autoPrompted = true
+        Lock.prompt(this, "Déverrouille pour continuer",
+            onOk = { prompting = false; stoppedAt = System.currentTimeMillis(); lockMessage.value = null; locked.value = false },
+            onFail = { prompting = false; lockMessage.value = it })
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Reverrouille après 30 s passées hors de l'appli (ou au premier lancement).
+        if (lockOn() && (stoppedAt == 0L || System.currentTimeMillis() - stoppedAt > 30_000)) {
+            if (!locked.value) autoPrompted = false
+            locked.value = true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        unlock(auto = true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!prompting) stoppedAt = System.currentTimeMillis()
+    }
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +109,13 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         Reminders.schedule(this)
-        setContent { AppTheme { AppRoot(openRequest.value) { openRequest.value = null } } }
+        runCatching { Widget.refresh(this) }
+        setContent {
+            AppTheme {
+                if (locked.value) LockScreen(lockMessage.value) { unlock() }
+                else AppRoot(openRequest.value) { openRequest.value = null }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -118,6 +161,7 @@ fun AppRoot(openRequest: String?, consumed: () -> Unit) {
     LaunchedEffect(openRequest) {
         when (openRequest) {
             "mood" -> { nav.stack.clear(); nav.push("mood") }
+            "mood:1", "mood:2", "mood:3", "mood:4", "mood:5" -> { nav.stack.clear(); nav.push("mood", "new:" + openRequest.removePrefix("mood:")) }
             "journal" -> { nav.stack.clear(); nav.tab = 2; nav.push("journal", "g:") }
             "program" -> { nav.stack.clear(); state.activeProgram?.let { nav.push("program", it) } }
         }

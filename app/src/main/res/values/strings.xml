@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sérénité</string>
+    <string name="widget_desc">Check-in d\'humeur en un appui</string>
 </resources>

@@ -47,11 +47,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/** Saisie ou modification d'un check-in. arg = id à modifier, vide = nouveau. */
+/** Saisie ou modification d'un check-in. arg = id à modifier, "new:N" = nouveau au niveau N, vide = nouveau. */
 @Composable
 fun MoodEditor(state: AppState, store: Store, arg: String, onBack: () -> Unit) {
     val existing = state.moods.firstOrNull { it.id == arg }
-    var mood by remember { mutableIntStateOf(existing?.mood ?: 0) }
+    var mood by remember { mutableIntStateOf(existing?.mood ?: arg.removePrefix("new:").toIntOrNull()?.coerceIn(1, 5) ?: 0) }
     var emotions by remember { mutableStateOf(existing?.emotions?.toSet() ?: emptySet()) }
     var factors by remember { mutableStateOf(existing?.factors?.toSet() ?: emptySet()) }
     var note by remember { mutableStateOf(existing?.note ?: "") }

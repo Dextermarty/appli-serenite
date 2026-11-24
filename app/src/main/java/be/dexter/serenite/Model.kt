@@ -65,6 +65,7 @@ data class Settings(
     val programTime: Int = 8 * 60,
     val oneDayPerDay: Boolean = true, // un jour de parcours débloqué par jour calendaire
     val vibrate: Boolean = true,
+    val lock: Boolean = false, // verrouillage par empreinte / code du téléphone
 )
 
 data class AppState(
