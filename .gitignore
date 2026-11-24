@@ -1,0 +1,12 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+*.jks
+*.keystore
+captures/
+.cxx/
+
+# Clé de signature dédiée (dépôt privé, appli perso)
+!signing/serenite.jks

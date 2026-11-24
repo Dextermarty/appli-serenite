@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Feuille -->
+    <path android:fillColor="#E6F7F3"
+        android:pathData="M54,30 C70,38 74,58 54,78 C34,58 38,38 54,30 Z" />
+    <!-- Nervure -->
+    <path android:strokeColor="#2E7D74" android:strokeWidth="2.5" android:strokeLineCap="round"
+        android:pathData="M54,40 L54,74" />
+</vector>
