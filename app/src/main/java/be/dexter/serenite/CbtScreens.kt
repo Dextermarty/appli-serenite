@@ -36,6 +36,12 @@ import kotlin.math.roundToInt
 @Composable
 fun ToolsTab(state: AppState, nav: Nav) {
     Screen("Exercices") {
+        SectionTitle("Prévention du burn-out")
+        ActionCard("Mon plan anti-rechute", if (state.plan.isEmpty()) "Signaux d'alerte, limites, personnes ressources" else "${state.plan.size} / ${Library.planSections.size} sections remplies", "🛡️") { nav.push("plan") }
+        ActionCard("Bilans", "Burn-out (BAT-12), humeur (PHQ-9), anxiété (GAD-7)", "📋") { nav.push("tests") }
+        ActionCard("Habitudes", "Petites habitudes protectrices, suivi quotidien", "✅") { nav.push("habits") }
+        ActionCard("Décompression de fin de journée", "Marquer la frontière avec le travail · 3 min", "🚪") { nav.push("decompression") }
+
         SectionTitle("Thérapie cognitive")
         ActionCard("Fiche de pensée", "Examiner une pensée qui pèse et trouver une alternative plus juste", "🧠") { nav.push("thought") }
         ActionCard("Mes fiches (${state.thoughts.size})", "Relire les fiches précédentes", "🗂️") { nav.push("thoughts") }
@@ -52,6 +58,9 @@ fun ToolsTab(state: AppState, nav: Nav) {
         ActionCard("Ancrage 5-4-3-2-1", "Revenir au présent par les sens · 3 min", "🖐️") { nav.push("grounding") }
         ActionCard("Relaxation progressive", "Contracter puis relâcher chaque zone · 6 min", "💆") { nav.push("pmr") }
         ActionCard("Scan corporel", "Parcourir le corps avec attention · 6 min", "🧘") { nav.push("bodyscan") }
+        ActionCard("Pause 3 minutes", "Pleine conscience express, au travail", "⏸️") { nav.push("pause3") }
+        ActionCard("Lieu ressource", "Visualisation guidée d'un lieu de calme · 5 min", "🏝️") { nav.push("safeplace") }
+        ActionCard("Détente avant le sommeil", "Lourdeur, souffle, descente · 6 min", "🌙") { nav.push("sleeprelax") }
     }
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -35,7 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun HomeScreen(state: AppState, nav: Nav) {
+fun HomeScreen(state: AppState, store: Store, nav: Nav) {
     val today = Stats.today()
     val mood = Stats.moodToday(state, today)
     val streak = Stats.streak(state, today)
@@ -44,6 +45,21 @@ fun HomeScreen(state: AppState, nav: Nav) {
         actions = { IconButton(onClick = { nav.push("settings") }) { Icon(Icons.Filled.Settings, "Réglages") } },
     ) {
         Muted(fmtEpochDay(today))
+
+        Stats.energyAlert(state, today)?.let { msg ->
+            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("⚠️ Signal d'alerte", fontWeight = FontWeight.SemiBold)
+                    Text(msg)
+                    Text("Relis ton plan anti-rechute et allège ce qui peut l'être. Si ça dure, parles-en à ton médecin.", style = MaterialTheme.typography.bodySmall)
+                    Row {
+                        TextButton(onClick = { nav.push("plan") }) { Text("Mon plan") }
+                        TextButton(onClick = { nav.push("test", "bat12") }) { Text("Faire le BAT-12") }
+                    }
+                }
+            }
+        }
+        if (state.objectives.isEmpty()) ActionCard("Choisis tes objectifs", "Burn-out, stress, sommeil… pour des recommandations adaptées", "🎯") { nav.push("objectives") }
 
         // Check-in du jour
         if (mood == null) {
@@ -83,7 +99,32 @@ fun HomeScreen(state: AppState, nav: Nav) {
                 }
             }
         } else {
-            ActionCard("Commencer un parcours", "Programmes de 7 jours : stress, anxiété, sommeil, bienveillance", "🧭") { nav.tab = 4 }
+            ActionCard("Commencer un parcours", "Burn-out, stress, anxiété, sommeil, bienveillance", "🧭") { nav.push("programs") }
+        }
+
+        // Habitudes du jour
+        val habits = state.habits.filter { !it.archived }
+        if (habits.isNotEmpty()) {
+            SectionTitle("Habitudes du jour (${habits.count { today in it.days }}/${habits.size})")
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    habits.forEach { h ->
+                        Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("${h.emoji}  ${h.title}", Modifier.weight(1f))
+                            Checkbox(today in h.days, { store.update { s -> s.copy(habits = s.habits.map {
+                                if (it.id == h.id) it.copy(days = if (today in it.days) it.days - today else it.days + today) else it }) } })
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bilan d'épuisement à refaire
+        val lastBat = state.tests.filter { it.testId == "bat12" }.maxByOrNull { it.at }
+        if ("burnout" in state.objectives && (lastBat == null || today - Stats.day(lastBat.at) >= 21)) {
+            ActionCard("Bilan d'épuisement", if (lastBat == null) "Fais un premier BAT-12 pour avoir un point de repère" else "Dernier il y a ${today - Stats.day(lastBat.at)} jours : refais-le pour suivre l'évolution", "📋") {
+                nav.push("test", "bat12")
+            }
         }
 
         SectionTitle("Pour toi maintenant")
@@ -122,6 +163,7 @@ fun StatTile(emoji: String, value: String, label: String, modifier: Modifier = M
 @Composable
 fun OnboardingScreen(store: Store) {
     var name by remember { mutableStateOf("") }
+    var goals by remember { mutableStateOf(setOf<String>()) }
     Column(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -135,9 +177,20 @@ fun OnboardingScreen(store: Store) {
             textAlign = TextAlign.Center,
         )
         OutlinedTextField(name, { name = it }, label = { Text("Ton prénom (facultatif)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Text("Qu'est-ce qui compte pour toi en ce moment ?", fontWeight = FontWeight.SemiBold)
+        ChipFlow(Library.objectives.map { it.second }, goals.mapNotNull { g -> Library.objectives.firstOrNull { it.first == g }?.second }) { label ->
+            val id = Library.objectives.first { it.second == label }.first
+            goals = if (id in goals) goals - id else goals + id
+        }
         InfoCard { Muted(Content.DISCLAIMER) }
         Button(
-            onClick = { store.update { it.copy(onboarded = true, settings = it.settings.copy(name = name.trim())) } },
+            onClick = {
+                store.update {
+                    val first = Library.objectives.map { o -> o.first }.firstOrNull { g -> g in goals }
+                    it.copy(onboarded = true, settings = it.settings.copy(name = name.trim()), objectives = goals,
+                        activeProgram = first?.let { g -> Library.theme(g)?.programs?.firstOrNull() })
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Commencer") }
     }

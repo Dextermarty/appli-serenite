@@ -81,13 +81,17 @@ class LogicTest {
         val s = AppState(
             onboarded = true,
             settings = Settings(name = "Dexter", remindEvening = true, moodTime = 19 * 60, oneDayPerDay = false, lock = true),
-            moods = listOf(MoodEntry("m", 1000L, 4, listOf("Calme"), listOf("Sport"), "note \"guillemets\"\nligne")),
+            moods = listOf(MoodEntry("m", 1000L, 4, listOf("Calme"), listOf("Sport"), "note \"guillemets\"\nligne", 2, 4)),
             journal = listOf(JournalEntry("j", 2000L, "question", "Q ?", "Réponse é à")),
             thoughts = listOf(ThoughtRecord("t", 3000L, "sit", "pensée", "Stress", 80, listOf("catastrophe"), "p", "c", "alt", 40)),
             activities = listOf(PlannedActivity("a", "Marcher", 20000, true, 7, 5)),
             sessions = listOf(Session("s", 4000L, "pmr", 360)),
             programs = mapOf("stress" to ProgramProgress("stress", 20000, setOf(0, 1), 20001)),
             activeProgram = "stress",
+            habits = listOf(Habit("h", "Marcher", "🚶", setOf(20000, 20001), false)),
+            tests = listOf(TestResult("r", 5000L, "bat12", List(12) { 3 }, 3f)),
+            objectives = setOf("burnout", "sommeil"),
+            plan = mapOf("signaux" to "Sommeil léger\nIrritabilité"),
         )
         assertEquals(s, StateJson.fromJson(StateJson.toJson(s)))
     }
@@ -97,16 +101,55 @@ class LogicTest {
         assertEquals(AppState(), s)
     }
 
+    private val kinds = setOf("mood", "journal", "thought", "distortions", "breath", "grounding", "pmr", "bodyscan", "activity",
+        "test", "plan", "habits", "decompression", "pause3", "safeplace", "sleeprelax")
+
+    @Test fun questionnaires() {
+        assertEquals(12, Library.bat12.items.size)
+        assertEquals(9, Library.phq9.items.size)
+        assertEquals(7, Library.gad7.items.size)
+        assertEquals(2.5f, Library.bat12.score(List(6) { 2 } + List(6) { 3 }), 0.001f)
+        assertEquals(0, Library.bat12.band(2.53f))
+        assertEquals(1, Library.bat12.band(2.54f))
+        assertEquals(2, Library.bat12.band(2.96f))
+        assertEquals(2, Library.phq9.band(Library.phq9.score(List(9) { 1 } + listOf()) + 1f)) // 10 → modéré
+        assertEquals(3, Library.gad7.band(15f))
+        Library.bat12.subscales.flatMap { it.second }.sorted().let { assertEquals((0..11).toList(), it) }
+    }
+
+    @Test fun energyAlert() {
+        fun e(day: Long, en: Int, ld: Int = 0) = MoodEntry("e$day", at(day), 3, energy = en, load = ld)
+        assertNull(Stats.energyAlert(AppState(moods = listOf(e(today, 4), e(today - 1, 4), e(today - 2, 3))), today))
+        assertTrue(Stats.energyAlert(AppState(moods = listOf(e(today, 2), e(today - 1, 1), e(today - 2, 2))), today) != null)
+        val drop = (7..13).map { e(today - it, 4) } + (0..2).map { e(today - it, 3) }
+        assertTrue(Stats.energyAlert(AppState(moods = drop), today) != null)
+    }
+
+    @Test fun habitStreak() {
+        val h = Habit("h", "Marcher", days = setOf(today - 1, today - 2, today - 4))
+        assertEquals(2, Stats.habitStreak(h, today))
+        assertEquals(3, Stats.habitStreak(h.copy(days = h.days + today), today))
+    }
+
     @Test fun contentIsConsistent() {
         Content.programs.forEach { p ->
-            assertEquals(7, p.days.size)
+            assertTrue(p.days.size >= 7)
             p.days.forEach { d ->
                 val k = d.link?.kind ?: return@forEach
-                assertTrue("$k inconnu", k in setOf("mood", "journal", "thought", "distortions", "breath", "grounding", "pmr", "bodyscan", "activity"))
+                assertTrue("$k inconnu", k in kinds)
+                if (k == "test") assertTrue(Library.test(d.link.arg) != null)
                 if (k == "breath") assertTrue(Content.breathPatterns.any { it.id == d.link.arg })
             }
         }
         assertEquals(12, Content.distortions.map { it.id }.toSet().size)
+        assertEquals(5, Content.programs.size)
+        Library.themes.forEach { t ->
+            t.programs.forEach { assertTrue(Content.program(it) != null) }
+            t.tests.forEach { assertTrue(Library.test(it) != null) }
+            t.tools.forEach { (_, r) -> assertTrue(r.kind, r.kind in kinds) }
+            t.habits.forEach { h -> assertTrue(h, Library.habitIdeas.any { it.second == h }) }
+        }
+        Library.objectives.forEach { assertTrue(Library.theme(it.first) != null) }
         assertTrue(Content.promptOfDay(-5).isNotBlank())
     }
 }

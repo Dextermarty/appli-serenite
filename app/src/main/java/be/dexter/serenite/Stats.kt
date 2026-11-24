@@ -20,6 +20,8 @@ object Stats {
         s.sessions.forEach { add(day(it.at)) }
         s.activities.filter { it.done }.forEach { add(it.day) }
         s.programs.values.forEach { if (it.lastDoneDay >= 0) add(it.lastDoneDay) }
+        s.tests.forEach { add(day(it.at)) }
+        s.habits.forEach { addAll(it.days) }
     }
 
     /** Série de jours consécutifs actifs, se terminant aujourd'hui (ou hier si rien encore aujourd'hui). */
@@ -74,6 +76,39 @@ object Stats {
     fun practiceMinutes(s: AppState, days: Int, today: Long = today()): Int {
         val from = today - days + 1
         return s.sessions.filter { day(it.at) in from..today }.sumOf { it.seconds } / 60
+    }
+
+    // --- Énergie / charge (prévention burn-out) ---
+
+    /** Moyenne journalière d'un champ 1..5 (0 = ignoré) sur [days] jours. */
+    fun dailyField(s: AppState, days: Int, today: Long = today(), f: (MoodEntry) -> Int): List<Pair<Long, Float?>> {
+        val byDay = s.moods.filter { f(it) > 0 }.groupBy { day(it.at) }
+        return (days - 1 downTo 0).map { k -> (today - k).let { d -> d to byDay[d]?.map(f)?.average()?.toFloat() } }
+    }
+
+    /**
+     * Signal d'alerte : énergie basse (≤ 2) sur les 3 derniers jours renseignés dans la semaine,
+     * ou charge élevée (≥ 4) avec énergie basse, ou énergie moyenne en baisse d'au moins 1 point sur 7 jours.
+     */
+    fun energyAlert(s: AppState, today: Long = today()): String? {
+        val last = dailyField(s, 7, today) { it.energy }.mapNotNull { it.second }
+        if (last.size >= 3 && last.takeLast(3).all { it <= 2f }) return "Ton énergie est basse depuis plusieurs jours."
+        val load = dailyField(s, 7, today) { it.load }.mapNotNull { it.second }
+        if (last.size >= 3 && load.size >= 3 && load.takeLast(3).average() >= 4.0 && last.takeLast(3).average() <= 2.5)
+            return "Charge élevée et énergie en baisse : c'est le moment de lever le pied."
+        val prev = dailyField(s, 14, today) { it.energy }.take(7).mapNotNull { it.second }
+        if (prev.size >= 3 && last.size >= 3 && prev.average() - last.average() >= 1.0)
+            return "Ton énergie moyenne a baissé de plus d'un point cette semaine."
+        return null
+    }
+
+    // --- Habitudes ---
+
+    fun habitStreak(h: Habit, today: Long = today()): Int {
+        var d = if (today in h.days) today else today - 1
+        var n = 0
+        while (d in h.days) { n++; d-- }
+        return n
     }
 
     // --- Parcours ---

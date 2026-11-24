@@ -30,6 +30,7 @@ object StateJson {
             oneDayPerDay = st.optBoolean("oneDayPerDay", def.oneDayPerDay),
             vibrate = st.optBoolean("vibrate", def.vibrate),
             lock = st.optBoolean("lock", def.lock),
+            voice = st.optBoolean("voice", def.voice),
         )
         val programs = o.optJSONArray("programs").objs { p ->
             val a = p.optJSONArray("done")
@@ -44,7 +45,8 @@ object StateJson {
             settings = settings,
             moods = o.optJSONArray("moods").objs { m ->
                 MoodEntry(m.getString("id"), m.getLong("at"), m.getInt("mood").coerceIn(1, 5),
-                    m.optJSONArray("emo").strings(), m.optJSONArray("fac").strings(), m.optString("note"))
+                    m.optJSONArray("emo").strings(), m.optJSONArray("fac").strings(), m.optString("note"),
+                    m.optInt("en"), m.optInt("ld"))
             },
             journal = o.optJSONArray("journal").objs { j ->
                 JournalEntry(j.getString("id"), j.getLong("at"), j.optString("kind", "libre"), j.optString("prompt"), j.optString("text"))
@@ -64,6 +66,18 @@ object StateJson {
             },
             programs = programs,
             activeProgram = o.optString("active", "").ifBlank { null },
+            habits = o.optJSONArray("habits").objs { h ->
+                val a = h.optJSONArray("days")
+                Habit(h.getString("id"), h.getString("title"), h.optString("emoji", "✅"),
+                    if (a == null) emptySet() else (0 until a.length()).map { a.getLong(it) }.toSet(), h.optBoolean("arch"))
+            },
+            tests = o.optJSONArray("tests").objs { t ->
+                val a = t.optJSONArray("ans")
+                TestResult(t.getString("id"), t.getLong("at"), t.getString("test"),
+                    if (a == null) emptyList() else (0 until a.length()).map { a.getInt(it) }, t.optDouble("score", 0.0).toFloat())
+            },
+            objectives = o.optJSONArray("objectives").strings().toSet(),
+            plan = o.optJSONObject("plan")?.let { j -> j.keys().asSequence().associateWith { j.optString(it) } } ?: emptyMap(),
         )
     }
 
@@ -77,11 +91,12 @@ object StateJson {
             .put("remindMood", st.remindMood).put("moodTime", st.moodTime)
             .put("remindEvening", st.remindEvening).put("eveningTime", st.eveningTime)
             .put("remindProgram", st.remindProgram).put("programTime", st.programTime)
-            .put("oneDayPerDay", st.oneDayPerDay).put("vibrate", st.vibrate).put("lock", st.lock))
+            .put("oneDayPerDay", st.oneDayPerDay).put("vibrate", st.vibrate).put("lock", st.lock).put("voice", st.voice))
         o.put("moods", JSONArray().apply {
             s.moods.forEach {
                 put(JSONObject().put("id", it.id).put("at", it.at).put("mood", it.mood)
-                    .put("emo", strs(it.emotions)).put("fac", strs(it.factors)).put("note", it.note))
+                    .put("emo", strs(it.emotions)).put("fac", strs(it.factors)).put("note", it.note)
+                    .put("en", it.energy).put("ld", it.load))
             }
         })
         o.put("journal", JSONArray().apply {
@@ -112,6 +127,20 @@ object StateJson {
             }
         })
         s.activeProgram?.let { o.put("active", it) }
+        o.put("habits", JSONArray().apply {
+            s.habits.forEach {
+                put(JSONObject().put("id", it.id).put("title", it.title).put("emoji", it.emoji)
+                    .put("days", JSONArray().apply { it.days.sorted().forEach { d -> put(d) } }).put("arch", it.archived))
+            }
+        })
+        o.put("tests", JSONArray().apply {
+            s.tests.forEach {
+                put(JSONObject().put("id", it.id).put("at", it.at).put("test", it.testId)
+                    .put("ans", JSONArray().apply { it.answers.forEach { a -> put(a) } }).put("score", it.score.toDouble()))
+            }
+        })
+        o.put("objectives", strs(s.objectives))
+        o.put("plan", JSONObject().apply { s.plan.forEach { (k, v) -> put(k, v) } })
         return o.toString()
     }
 }

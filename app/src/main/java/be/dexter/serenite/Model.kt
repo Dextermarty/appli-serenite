@@ -1,5 +1,8 @@
 package be.dexter.serenite
 
+/** Destination d'écran secondaire. kind : voir Destination(). */
+data class Route(val kind: String, val arg: String = "")
+
 /** Check-in d'humeur. mood : 1 (très mal) → 5 (très bien). */
 data class MoodEntry(
     val id: String,
@@ -8,7 +11,21 @@ data class MoodEntry(
     val emotions: List<String> = emptyList(),
     val factors: List<String> = emptyList(),
     val note: String = "",
+    val energy: Int = 0, // 0 = non renseigné, 1 (à plat) → 5 (plein d'énergie)
+    val load: Int = 0, // 0 = non renseigné, 1 (légère) → 5 (écrasante) : charge ressentie
 )
+
+/** Habitude quotidienne et jours (epochDay) où elle a été faite. */
+data class Habit(
+    val id: String,
+    val title: String,
+    val emoji: String = "✅",
+    val days: Set<Long> = emptySet(),
+    val archived: Boolean = false,
+)
+
+/** Résultat d'un questionnaire (score = somme ou moyenne selon le test). */
+data class TestResult(val id: String, val at: Long, val testId: String, val answers: List<Int>, val score: Float)
 
 /** Entrée de journal. kind : "libre", "gratitude" ou "question". */
 data class JournalEntry(
@@ -66,6 +83,7 @@ data class Settings(
     val oneDayPerDay: Boolean = true, // un jour de parcours débloqué par jour calendaire
     val vibrate: Boolean = true,
     val lock: Boolean = false, // verrouillage par empreinte / code du téléphone
+    val voice: Boolean = true, // guidage vocal des exercices
 )
 
 data class AppState(
@@ -78,4 +96,8 @@ data class AppState(
     val sessions: List<Session> = emptyList(),
     val programs: Map<String, ProgramProgress> = emptyMap(),
     val activeProgram: String? = null,
+    val habits: List<Habit> = emptyList(),
+    val tests: List<TestResult> = emptyList(),
+    val objectives: Set<String> = emptySet(),
+    val plan: Map<String, String> = emptyMap(), // plan anti-rechute : section → texte
 )

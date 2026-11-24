@@ -169,3 +169,27 @@ fun greeting(name: String): String {
     }
     return if (name.isBlank()) base else "$base $name"
 }
+
+/** Échelle 1..5 compacte (0 = non renseigné ; un nouvel appui sur la valeur choisie la retire). */
+@Composable
+fun ScaleRow(label: String, value: Int, low: String, high: String, onChange: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            if (value > 0) Text("$value / 5", color = MaterialTheme.colorScheme.primary)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            (1..5).forEach { v ->
+                FilterChip(
+                    selected = value == v, onClick = { onChange(if (value == v) 0 else v) },
+                    label = { Text("$v", Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Text(low, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(high, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

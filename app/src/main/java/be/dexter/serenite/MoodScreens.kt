@@ -55,6 +55,8 @@ fun MoodEditor(state: AppState, store: Store, arg: String, onBack: () -> Unit) {
     var emotions by remember { mutableStateOf(existing?.emotions?.toSet() ?: emptySet()) }
     var factors by remember { mutableStateOf(existing?.factors?.toSet() ?: emptySet()) }
     var note by remember { mutableStateOf(existing?.note ?: "") }
+    var energy by remember { mutableIntStateOf(existing?.energy ?: 0) }
+    var load by remember { mutableIntStateOf(existing?.load ?: 0) }
 
     Screen(if (existing == null) "Check-in" else "Modifier le check-in", onBack) {
         SectionTitle("Comment te sens-tu ?")
@@ -77,6 +79,10 @@ fun MoodEditor(state: AppState, store: Store, arg: String, onBack: () -> Unit) {
             }
         }
 
+        SectionTitle("Énergie et charge")
+        ScaleRow("Énergie", energy, "À plat", "Pleine forme") { energy = it }
+        ScaleRow("Charge ressentie", load, "Légère", "Écrasante") { load = it }
+
         SectionTitle("Émotions")
         Muted("Agréables")
         ChipFlow(Content.positiveEmotions, emotions) { e -> emotions = if (e in emotions) emotions - e else emotions + e }
@@ -94,7 +100,7 @@ fun MoodEditor(state: AppState, store: Store, arg: String, onBack: () -> Unit) {
             onClick = {
                 store.update { s ->
                     val e = MoodEntry(existing?.id ?: Store.newId(), existing?.at ?: System.currentTimeMillis(), mood,
-                        Content.emotions.filter { it in emotions }, Content.factors.filter { it in factors }, note.trim())
+                        Content.emotions.filter { it in emotions }, Content.factors.filter { it in factors }, note.trim(), energy, load)
                     s.copy(moods = (s.moods.filter { it.id != e.id } + e).sortedBy { it.at })
                 }
                 onBack()
@@ -142,6 +148,22 @@ fun MoodTab(state: AppState, store: Store, nav: Nav) {
                     Muted("aujourd'hui")
                 }
             }
+        }
+
+        val en = Stats.dailyField(state, days) { it.energy }
+        val ld = Stats.dailyField(state, days) { it.load }
+        if (en.any { it.second != null } || ld.any { it.second != null }) {
+            SectionTitle("Énergie et charge")
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    MoodChart(en, ld)
+                    Row {
+                        Text("● Énergie  ", color = MaterialTheme.colorScheme.primary)
+                        Text("● Charge", color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+            }
+            Stats.energyAlert(state)?.let { InfoCard { Text("⚠️ $it", fontWeight = FontWeight.SemiBold) } }
         }
 
         val top = Stats.topEmotions(state, days)
@@ -223,8 +245,9 @@ fun MoodTab(state: AppState, store: Store, nav: Nav) {
 
 /** Courbe des moyennes journalières (1..5). Les jours sans check-in sont sautés. */
 @Composable
-fun MoodChart(points: List<Pair<Long, Float?>>) {
+fun MoodChart(points: List<Pair<Long, Float?>>, second: List<Pair<Long, Float?>>? = null) {
     val line = MaterialTheme.colorScheme.primary
+    val line2 = MaterialTheme.colorScheme.secondary
     val grid = MaterialTheme.colorScheme.outlineVariant
     Canvas(Modifier.fillMaxWidth().height(150.dp)) {
         val n = points.size
@@ -233,14 +256,24 @@ fun MoodChart(points: List<Pair<Long, Float?>>) {
         fun x(i: Int) = if (n == 1) size.width / 2 else i * size.width / (n - 1)
         fun y(v: Float) = padY + (5f - v) / 4f * (size.height - 2 * padY)
         for (v in 1..5) drawLine(grid, Offset(0f, y(v.toFloat())), Offset(size.width, y(v.toFloat())), strokeWidth = 1f)
-        val path = Path()
-        var started = false
-        points.forEachIndexed { i, (_, v) ->
-            if (v == null) return@forEachIndexed
-            if (!started) { path.moveTo(x(i), y(v)); started = true } else path.lineTo(x(i), y(v))
+        fun pathOf(l: List<Pair<Long, Float?>>): Path {
+            val path = Path()
+            var started = false
+            l.forEachIndexed { i, (_, v) ->
+                if (v == null) return@forEachIndexed
+                if (!started) { path.moveTo(x(i), y(v)); started = true } else path.lineTo(x(i), y(v))
+            }
+            return path
         }
-        drawPath(path, line, style = Stroke(width = 4f))
         val r = if (n > 40) 4f else 7f
-        points.forEachIndexed { i, (_, v) -> if (v != null) drawCircle(moodColor(v + 0.5f), r, Offset(x(i), y(v))) }
+        if (second == null) {
+            drawPath(pathOf(points), line, style = Stroke(width = 4f))
+            points.forEachIndexed { i, (_, v) -> if (v != null) drawCircle(moodColor(v + 0.5f), r, Offset(x(i), y(v))) }
+        } else {
+            drawPath(pathOf(points), line, style = Stroke(width = 4f))
+            drawPath(pathOf(second), line2, style = Stroke(width = 4f))
+            points.forEachIndexed { i, (_, v) -> if (v != null) drawCircle(line, r * 0.7f, Offset(x(i), y(v))) }
+            second.forEachIndexed { i, (_, v) -> if (v != null) drawCircle(line2, r * 0.7f, Offset(x(i), y(v))) }
+        }
     }
 }

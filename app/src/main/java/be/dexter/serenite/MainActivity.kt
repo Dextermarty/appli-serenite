@@ -17,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,8 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-/** Destination d'écran secondaire. kind : voir [Destination]. */
-data class Route(val kind: String, val arg: String = "")
 
 /** Navigation simple : un onglet + une pile d'écrans par-dessus. */
 class Nav {
@@ -124,6 +122,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handle(i: Intent?) {
+        // Captures automatiques (build debug uniquement) : données de démo et ouverture directe d'un écran.
+        if (BuildConfig.DEBUG && i != null) {
+            if (i.getBooleanExtra("demo", false)) Store.get(this).replace(Demo.state())
+            i.getStringExtra("shot")?.let { openRequest.value = it }
+        }
         val o = i?.getStringExtra(Reminders.EXTRA_OPEN) ?: return
         i.removeExtra(Reminders.EXTRA_OPEN)
         openRequest.value = o
@@ -164,6 +167,14 @@ fun AppRoot(openRequest: String?, consumed: () -> Unit) {
             "mood:1", "mood:2", "mood:3", "mood:4", "mood:5" -> { nav.stack.clear(); nav.push("mood", "new:" + openRequest.removePrefix("mood:")) }
             "journal" -> { nav.stack.clear(); nav.tab = 2; nav.push("journal", "g:") }
             "program" -> { nav.stack.clear(); state.activeProgram?.let { nav.push("program", it) } }
+            else -> when {
+                openRequest == null -> {}
+                openRequest.startsWith("tab:") -> { nav.stack.clear(); nav.tab = openRequest.removePrefix("tab:").toIntOrNull() ?: 0 }
+                openRequest.startsWith("route:") -> {
+                    val p = openRequest.removePrefix("route:").split("|", limit = 2)
+                    nav.stack.clear(); nav.push(p[0], p.getOrElse(1) { "" })
+                }
+            }
         }
         if (openRequest != null) consumed()
     }
@@ -183,7 +194,7 @@ fun AppRoot(openRequest: String?, consumed: () -> Unit) {
                 NavigationBarItem(nav.tab == 1, { nav.tab = 1 }, { Icon(Icons.Filled.Favorite, null) }, label = { Text("Humeur") })
                 NavigationBarItem(nav.tab == 2, { nav.tab = 2 }, { Icon(Icons.Filled.Create, null) }, label = { Text("Journal") })
                 NavigationBarItem(nav.tab == 3, { nav.tab = 3 }, { Icon(Icons.Filled.PlayArrow, null) }, label = { Text("Exercices") })
-                NavigationBarItem(nav.tab == 4, { nav.tab = 4 }, { Icon(Icons.Filled.Star, null) }, label = { Text("Parcours") })
+                NavigationBarItem(nav.tab == 4, { nav.tab = 4 }, { Icon(Icons.Filled.Search, null) }, label = { Text("Explorer") })
             }
         },
     ) { pad ->
@@ -191,11 +202,11 @@ fun AppRoot(openRequest: String?, consumed: () -> Unit) {
             val top = nav.stack.lastOrNull()
             if (top != null) Destination(top, state, store, nav)
             else when (nav.tab) {
-                0 -> HomeScreen(state, nav)
+                0 -> HomeScreen(state, store, nav)
                 1 -> MoodTab(state, store, nav)
                 2 -> JournalTab(state, nav)
                 3 -> ToolsTab(state, nav)
-                else -> ProgramsTab(state, store, nav)
+                else -> ExploreTab(state, nav)
             }
         }
     }
@@ -219,6 +230,18 @@ fun Destination(r: Route, state: AppState, store: Store, nav: Nav) {
         "programDay" -> ProgramDayScreen(state, store, r.arg, nav, back)
         "settings" -> SettingsScreen(state, store, nav, back)
         "help" -> HelpScreen(back)
+        "programs" -> ProgramsTab(state, store, nav, back)
+        "tests" -> TestsScreen(state, nav, back)
+        "test" -> TestScreen(state, store, r.arg, nav, back)
+        "habits" -> HabitsScreen(state, store, back)
+        "plan" -> PlanScreen(state, store, back)
+        "theme" -> ThemeScreen(state, store, r.arg, nav, back)
+        "objectives" -> ObjectivesScreen(state, store, back)
+        "search" -> SearchScreen(nav, back)
+        "pause3" -> GuidedScreen("Pause 3 minutes", "pause3", Library.pause3, state, store, back)
+        "safeplace" -> GuidedScreen("Lieu ressource", "safeplace", Library.safePlace, state, store, back)
+        "sleeprelax" -> GuidedScreen("Détente avant le sommeil", "sleeprelax", Library.sleepRelax, state, store, back)
+        "decompression" -> GuidedScreen("Décompression de fin de journée", "decompression", Library.decompression, state, store, back)
         else -> LaunchedEffect(r) { nav.pop() }
     }
 }

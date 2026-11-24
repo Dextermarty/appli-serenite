@@ -205,7 +205,9 @@ object Content {
 
     // ---------------- Parcours ----------------
 
-    val programs = listOf(
+    val programs: List<Program> get() = listOf(Library.burnoutProgram) + basePrograms
+
+    private val basePrograms = listOf(
         Program("stress", "Apaiser le stress", "7 jours pour comprendre et désamorcer la tension du quotidien", "🌿", listOf(
             ProgramDay("Comprendre le stress",
                 "Le stress est une réaction normale : face à une exigence, le corps mobilise de l'énergie (cœur plus rapide, muscles tendus, attention aiguisée). Il devient un problème quand il dure sans période de récupération. L'objectif n'est pas de supprimer le stress, mais de retrouver des moments de redescente.",

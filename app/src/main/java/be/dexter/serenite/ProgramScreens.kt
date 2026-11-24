@@ -21,9 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProgramsTab(state: AppState, store: Store, nav: Nav) {
-    Screen("Parcours") {
-        Muted("Des programmes de 7 jours : une courte leçon et un exercice par jour.")
+fun ProgramsTab(state: AppState, store: Store, nav: Nav, onBack: (() -> Unit)? = null) {
+    Screen("Parcours", onBack) {
+        Muted("Des programmes de 7 à 10 jours : une courte leçon et un exercice par jour.")
         Content.programs.forEach { prog ->
             val p = state.programs[prog.id]
             val n = p?.doneDays?.size ?: 0

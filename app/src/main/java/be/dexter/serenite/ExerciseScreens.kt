@@ -76,6 +76,7 @@ fun BreathingScreen(state: AppState, store: Store, patternId: String, onBack: ()
     var startedAt by remember { mutableLongStateOf(0L) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val scale = remember { Animatable(0.45f) }
+    val voice = rememberVoice()
     val phases = remember(b) {
         listOf(
             Phase("Inspire", b.inhale, 1f), Phase("Retiens", b.hold1, 1f),
@@ -94,6 +95,7 @@ fun BreathingScreen(state: AppState, store: Store, patternId: String, onBack: ()
                 phaseLabel = p.label
                 phaseEnd = System.currentTimeMillis() + p.seconds * 1000L
                 if (state.settings.vibrate) buzz(ctx)
+                if (Store.get(ctx).state.value.settings.voice) voice.say(p.label)
                 if (p.target != scale.value) scale.animateTo(p.target, tween(p.seconds * 1000, easing = LinearEasing))
                 else delay(p.seconds * 1000L)
             }
@@ -111,7 +113,7 @@ fun BreathingScreen(state: AppState, store: Store, patternId: String, onBack: ()
     Screen(b.name, {
         if (running) logSession(store, "breath:" + b.id, ((System.currentTimeMillis() - startedAt) / 1000).toInt())
         onBack()
-    }) {
+    }, actions = { VoiceToggle(state, store, voice) }) {
         Muted(b.desc)
         val primary = MaterialTheme.colorScheme.primary
         val soft = MaterialTheme.colorScheme.primaryContainer
@@ -156,10 +158,12 @@ fun GuidedScreen(title: String, tool: String, steps: List<GuidedStep>, state: Ap
     var left by remember { mutableIntStateOf(steps.first().seconds) }
     var spent by remember { mutableIntStateOf(0) }
     var done by remember { mutableStateOf(false) }
+    val voice = rememberVoice()
     KeepScreenOn(running)
 
     LaunchedEffect(running, idx) {
-        if (!running) return@LaunchedEffect
+        if (!running) { if (!done) voice.stop(); return@LaunchedEffect }
+        if (left == steps[idx].seconds && Store.get(ctx).state.value.settings.voice) voice.say(steps[idx].title + ". " + steps[idx].text)
         while (left > 0) {
             delay(1000)
             left--
@@ -171,6 +175,7 @@ fun GuidedScreen(title: String, tool: String, steps: List<GuidedStep>, state: Ap
             left = steps[idx].seconds
         } else {
             if (state.settings.vibrate) buzz(ctx, 300)
+            if (Store.get(ctx).state.value.settings.voice) voice.say("Exercice terminé.")
             running = false
             done = true
             logSession(store, tool, spent)
@@ -180,7 +185,7 @@ fun GuidedScreen(title: String, tool: String, steps: List<GuidedStep>, state: Ap
     Screen(title, {
         if (!done) logSession(store, tool, spent)
         onBack()
-    }) {
+    }, actions = { VoiceToggle(state, store, voice) }) {
         LinearProgressIndicator(progress = { (idx + if (done) 1 else 0) / steps.size.toFloat() }, modifier = Modifier.fillMaxWidth())
         Muted("Étape ${idx + 1} / ${steps.size}")
         val s = steps[idx]
